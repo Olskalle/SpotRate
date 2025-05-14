@@ -63,7 +63,7 @@ npm install drizzle-orm drizzle-kit expo-sqlite
 
 ```mermaid
   erDiagram
-      markers ||--o{ markerImages
+      markers ||--o{ markerImages : "1..1-0..N"
       markers {
           integer id PK "autoIncrement"
           text title

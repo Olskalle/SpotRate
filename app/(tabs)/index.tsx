@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import * as Location from 'expo-location';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import Map from '@/components/Map';
 import { Marker } from '@/types';
 import { useMarkerContext } from '@/context/MarkerContext';
@@ -14,8 +14,9 @@ export default function MapScreen() {
     longitude: number;
   } | null>(null);
   
+  const [markers, setMarkers] = useState<Marker[]>([]);
+
   const router = useRouter();
-  const markers = getAllMarkers();
 
   useEffect(() => {
     (async () => {
@@ -36,15 +37,34 @@ export default function MapScreen() {
     })();
   }, []);
 
-  const handleMarkerAdded = (coordinate: { latitude: number; longitude: number }) => {
-    const newMarker: Marker = {
-      id: String(markers.length + 1),
-      coordinate,
-    };
-    addMarker(newMarker);
-  };
+  useFocusEffect(
+    React.useCallback(() => {
+      loadMarkers();
+    }, [])
+  );
 
-  const handleMarkerPress = (id: string) => {
+  const handleMarkerAdded = async (coordinate: { latitude: number; longitude: number }) => {
+    const newMarker: Marker = {
+      id: 0,
+      title: String('Маркер'),
+      coordinate: coordinate
+    };
+
+    await addMarker(newMarker).then(loadMarkers);
+  };
+  
+  
+  const loadMarkers = async () => {
+    try {
+      const loadedMarkers = await getAllMarkers();
+      setMarkers(loadedMarkers);
+      console.log('Effect load markers triggered');
+    } catch (error) {
+      console.error("Failed to load markers:", error);
+    }
+};
+
+  const handleMarkerPress = (id: number) => {
     router.push(`/marker/${id}`);
   };
 

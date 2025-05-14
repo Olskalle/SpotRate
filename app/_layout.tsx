@@ -1,10 +1,24 @@
 import { MarkerProvider } from '@/context/MarkerContext';
 import { MarkerImageProvider } from '@/context/MarkerImageContext';
+import { db } from '@/database/client';
+import migrations from '@/drizzle/migrations';
+import { useMigrations } from 'drizzle-orm/expo-sqlite/migrator';
 import { Stack } from 'expo-router';
 import { StatusBar } from "expo-status-bar";
-import React from 'react';
+import React, { useEffect } from 'react';
 
 export default function RootLayout() {
+
+  const { success, error } = useMigrations(db, migrations);
+
+  if (error) {
+    console.error("Failed to apply migrations", error);
+  }
+
+  if (success) {
+    console.log("Migrated successfully");
+  }
+
   return (
     <>
       <MarkerProvider>

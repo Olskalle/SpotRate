@@ -1,45 +1,61 @@
 import { MarkerImage } from '@/types';
-import React, { createContext, useState, useContext } from 'react';
+import React, { createContext, useState, useContext, useEffect } from 'react';
+import { db } from '@/database/client';
+import { DbMarkerImageInsert, DbMarkerImageSelect, markerImages } from '@/database/schema';
+import { and, eq } from 'drizzle-orm';
 
 type MarkerImageContextType = {
-  images: Record<string, MarkerImage[]>; // Объект, где ключ — id маркера, значение — массив изображений
-  addImage: (markerId: string, image: MarkerImage) => void;
-  removeImage: (markerId: string, uri: string) => void;
-  getImagesByMarkerId: (markerId: string) => MarkerImage[]; // Функция для получения изображений по markerId
+  addImage: (image: MarkerImage) => Promise<void>;
+  removeImage: (markerId: number, uri: string) => Promise<void>;
+  getImagesByMarkerId: (markerId: number) => Promise<MarkerImage[]>;
 };
 
 const MarkerImageContext = createContext<MarkerImageContextType>({
-  images: {},
-  addImage: () => {},
-  removeImage: () => {},
-  getImagesByMarkerId: () => [],
+  addImage: async () => {},
+  removeImage: async () => {},
+  getImagesByMarkerId: async () => [],
 });
 
 export const useMarkerImageContext = () => useContext(MarkerImageContext);
 
 export const MarkerImageProvider = ({ children }: { children: React.ReactNode }) => {
-  const [images, setImages] = useState<Record<string, MarkerImage[]>>({});
 
-  const addImage = (markerId: string, image: MarkerImage) => {
-    setImages((prev) => ({
-      ...prev,
-      [markerId]: [...(prev[markerId] || []), image], // Если массив для markerId не существует, создаем его
-    }));
+  const imageToDbImage = (image : MarkerImage) : DbMarkerImageInsert => {
+    const dbImage = {
+      markerId: image.markerId,
+      uri: image.uri
+    };
+
+    return dbImage;
+  }
+
+  const dbImageToImage = (dbImage : DbMarkerImageSelect) : MarkerImage => {
+    const image = {
+      id: dbImage.id,
+      markerId: dbImage.markerId || 0,
+      uri: dbImage.uri
+    };
+
+    return image;
+  }
+
+  const addImage = async (image: MarkerImage) => {
+    const dbImage = imageToDbImage(image);
+    await db.insert(markerImages).values(dbImage).returning();
   };
 
-  const removeImage = (markerId: string, uri: string) => {
-    setImages((prev) => ({
-      ...prev,
-      [markerId]: prev[markerId].filter((img) => img.uri !== uri), // Фильтруем массив изображений
-    }));
+  const removeImage = async (markerId: number, uri: string) => {
+    await db.delete(markerImages).where(and(eq(markerImages.markerId, markerId), eq(markerImages.uri, uri))).execute();
   };
 
-  const getImagesByMarkerId = (markerId: string) => {
-    return images[markerId] || []; // Если изображений для markerId нет, возвращаем пустой массив
+  const getImagesByMarkerId = async (markerId: number) => {
+    const dbImages = await db.select().from(markerImages).where(eq(markerImages.markerId, markerId)).execute();
+
+    return dbImages.map(dbImage => dbImageToImage(dbImage));
   };
 
   return (
-    <MarkerImageContext.Provider value={{ images, addImage, removeImage, getImagesByMarkerId }}>
+    <MarkerImageContext.Provider value={{ addImage, removeImage, getImagesByMarkerId }}>
       {children}
     </MarkerImageContext.Provider>
   );

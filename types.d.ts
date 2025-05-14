@@ -1,7 +1,7 @@
 import { LatLng } from "react-native-maps";
 
 export interface Marker {
-    id: string;
+    id: number;
     coordinate: LatLng;
     title?: string;
     description?: string;
@@ -9,7 +9,7 @@ export interface Marker {
   }
   
   export interface MarkerImage {
-    id: string;
+    id: number;
     uri: string;
-    markerId: string;
+    markerId: number;
   }

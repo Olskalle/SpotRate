@@ -3,8 +3,8 @@ import { StyleSheet, View } from 'react-native';
 import MapView, { LatLng, Marker, Region } from 'react-native-maps';
 
 interface MapProps {
-  markers: { id: string; coordinate: LatLng }[];
-  onMarkerPress: (id: string) => void;
+  markers: { id: number; coordinate: LatLng }[];
+  onMarkerPress: (id: number) => void;
   onMarkerAdded: (coordinate: LatLng) => void;
   initialRegion?: {
     latitude: number;
@@ -26,7 +26,7 @@ export default function Map({
   return (
     <View style={styles.container}>
       <MapView
-      ref={mapRef}
+        ref={mapRef}
         style={styles.map}
         onLongPress={(event) => {
           const { coordinate } = event.nativeEvent;

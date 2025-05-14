@@ -1,52 +1,78 @@
 import { Marker } from '@/types';
-import React, { createContext, useState, useContext } from 'react';
+import React, { createContext, useContext, useEffect } from 'react';
+import { db } from '@/database/client';
+import { DbMarkerInsert, DbMarkerSelect, markers } from '@/database/schema';
+import { count, eq, max } from 'drizzle-orm';
 
 type MarkerImageContextType = {
-  markers: Record<string, Marker>;
-  addMarker: (marker: Marker) => void;
-  removeMarker: (id: string) => void;
-  getMarkerById: (id: string) => Marker | undefined;
-  getAllMarkers: () => Marker[];
+  addMarker: (marker: Marker) => Promise<void>;
+  removeMarker: (id: number) => Promise<void>;
+  getMarkerById: (id: number) => Promise<Marker | undefined>;
+  getAllMarkers: () => Promise<Marker[]>;
 };
 
 const MarkerContext = createContext<MarkerImageContextType>({
-  markers: {},
-  addMarker: () => {},
-  removeMarker: () => {},
-  getMarkerById: () => undefined,
-  getAllMarkers: () => []
+  addMarker: async () => {},
+  removeMarker: async () => {},
+  getMarkerById: async () => undefined,
+  getAllMarkers: async () => []
 });
 
 export const useMarkerContext = () => useContext(MarkerContext);
 
 export const MarkerProvider = ({ children }: { children: React.ReactNode }) => {
-  const [markers, setMarkers] = useState<Record<string, Marker>>({});
 
-  const addMarker = (marker: Marker) => {
-    setMarkers((prev) => ({
-      ...prev,
-      [marker.id]: marker,
-    }));
+  const markerToDbInsert = (marker: Marker): DbMarkerInsert => {
+
+    const dbMarker = {
+      title: marker.title || 'Marker',
+      description: marker.description || '',
+      latitude: marker.coordinate.latitude,
+      longitude: marker.coordinate.longitude,
+      created_at: new Date(),
+      updated_at: new Date(),
+    };
+    
+    return dbMarker;
   };
 
-  const removeMarker = (id: string) => {
-    setMarkers((prev) => {
-      const newMarkers = { ...prev };
-      delete newMarkers[id];
-      return newMarkers;
-    });
+  const dbMarkerToMarker = (dbMarker: DbMarkerSelect) : Marker => {
+    const coords = {latitude: dbMarker.latitude, longitude: dbMarker.longitude};
+    
+    const marker = {
+      id: dbMarker.id,
+      title: dbMarker.title,
+      description: dbMarker.description,
+      coordinate: coords,
+
+    };
+
+    return marker;
+  }
+
+  const addMarker = async (marker: Marker) => {
+    const dbMarker = markerToDbInsert(marker);
+    await db.insert(markers).values(dbMarker).returning();
   };
 
-  const getMarkerById = (id: string) => {
-    return markers[id] || undefined;
+  const removeMarker = async (id: number) => {
+    await db.delete(markers).where(eq(markers.id, id)).execute();
   };
 
-  const getAllMarkers = () => {
-    return Object.values(markers);
+  const getMarkerById = async (id: number) => {
+    const dbMarker = await db.selectDistinct().from(markers).execute();
+
+    return dbMarkerToMarker(dbMarker[0]);
+  };
+
+  const getAllMarkers = async () => {
+    const allMarkers = await db.select().from(markers);
+
+    return allMarkers.map(marker => dbMarkerToMarker(marker));
   };
 
   return (
-    <MarkerContext.Provider value={{ markers, addMarker, removeMarker, getMarkerById, getAllMarkers }}>
+    <MarkerContext.Provider value={{ addMarker, removeMarker, getMarkerById, getAllMarkers }}>
       {children}
     </MarkerContext.Provider>
   );

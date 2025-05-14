@@ -1,20 +1,25 @@
-import React, { useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, View, Text, Button, Modal, PanResponder } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useFocusEffect, useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
 import ImageListView from '@/components/ImageListView';
 import { useMarkerImageContext } from '@/context/MarkerImageContext';
 import { useMarkerContext } from '@/context/MarkerContext';
+import { Marker, MarkerImage } from '@/types';
 
 export default function MarkerModal() {
   const { id } = useLocalSearchParams();
   const { addImage, removeImage, getImagesByMarkerId } = useMarkerImageContext();
-  const { getMarkerById } = useMarkerContext();
+  const { getMarkerById, removeMarker } = useMarkerContext();
   
   const router = useRouter();
   const navigation = useNavigation();
-  const images = getImagesByMarkerId(id as string);
-  const marker = getMarkerById(id as string);
+
+  const [loading, setLoading] = useState(true);
+  const [marker, setMarker] = useState<Marker | undefined>(undefined);
+  const [images, setImages] = useState<MarkerImage[]>([]);
+
+  const numericId = typeof id === 'string' ? parseInt(id, 10) : 0;
 
   const panResponder = useRef(
     PanResponder.create({
@@ -28,21 +33,63 @@ export default function MarkerModal() {
     })
   ).current;
 
-  const pickImage = async () => {
-    let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: 'images',
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 1,
-    });
+  const loadData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const [markerData, imagesData] = await Promise.all([
+        getMarkerById(numericId),
+        getImagesByMarkerId(numericId)
+      ]);
+      setMarker(markerData);
+      setImages(imagesData);
+    } catch (error) {
+      console.error('Error loading data:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [numericId, getMarkerById, getImagesByMarkerId]);
 
-    if (!result.canceled && result.assets && result.assets.length > 0) {
-      addImage(id as string, { id: '0', uri: result.assets[0].uri, markerId: id as string }); 
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const pickImage = async () => {
+    try {
+      let result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: 'images',
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 1,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        await addImage({ id: 0, uri: result.assets[0].uri, markerId: numericId });
+        await loadData();
+      }
+    } catch (error) {
+      console.error('Error picking image:', error);
     }
   };
 
-  const handleRemoveImage = (uri: string) => {
-    removeImage(id as string, uri);
+  const handleRemoveImage = async (uri: string) => {
+    try {
+      console.log(uri);
+      await removeImage(numericId, uri);
+      console.log('removeImage ended');
+      await loadData();
+    } catch (error) {
+      console.error('Error removing image:', error);
+    }
+  };
+
+  const handleRemoveMarker = async () => {
+    try {
+      await removeMarker(numericId);
+      router.back();
+    }
+    catch (error) {
+      console.error("Error removing marker:", error);
+    }
   };
 
   useFocusEffect(() => {
@@ -65,7 +112,7 @@ export default function MarkerModal() {
           <Text style={styles.text}>Долгота: {marker?.coordinate.longitude}</Text>
           <Button title="Добавить изображение" onPress={pickImage} color="#ffd33d" />
           <ImageListView images={images} onRemoveImage={handleRemoveImage} />
-          <Button title="Закрыть" onPress={() => router.back()} color="#ffd33d" />
+          <Button title="Удалить" onPress={handleRemoveMarker} color="#91150c" />
       </View>
     </Modal>
   );

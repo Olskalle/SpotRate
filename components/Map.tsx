@@ -34,8 +34,8 @@ export default function Map({
         }}
         initialRegion={initialRegion}
         region={currentRegion}
-        onRegionChangeComplete={() => {
-          setCurrentRegion(initialRegion)
+        onRegionChangeComplete={(region) => {
+          setCurrentRegion(region)
         }}
         showsMyLocationButton={true}
         showsUserLocation={true}

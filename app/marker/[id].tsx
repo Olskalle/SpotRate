@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, View, Text, Button, Modal, PanResponder } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import * as Notifications from 'expo-notifications';
 import { useFocusEffect, useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
 import ImageListView from '@/components/ImageListView';
 import { useMarkerImageContext } from '@/context/MarkerImageContext';
@@ -71,6 +72,18 @@ export default function MarkerModal() {
     }
   };
 
+  const scheduleNotification = async () => {
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: '👋 Привет!',
+        body: 'Это тестовое локальное уведомление.',
+        data: { customData: '123' },
+      },
+      trigger: null,
+    });
+  };
+
+
   const handleRemoveImage = async (uri: string) => {
     try {
       console.log(uri);
@@ -113,6 +126,7 @@ export default function MarkerModal() {
           <Button title="Добавить изображение" onPress={pickImage} color="#ffd33d" />
           <ImageListView images={images} onRemoveImage={handleRemoveImage} />
           <Button title="Удалить" onPress={handleRemoveMarker} color="#91150c" />
+          <Button title="Показать уведомление" onPress={scheduleNotification} />
       </View>
     </Modal>
   );

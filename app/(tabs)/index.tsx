@@ -1,4 +1,3 @@
-// MapScreen.tsx
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
